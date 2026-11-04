@@ -19,12 +19,23 @@ loader.config({ monaco })
   },
 }
 
+const cssColor = (name: string, fallback: string) => {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  return /^#[0-9a-f]{6}$/i.test(value) ? value : fallback
+}
+export function applyEditorTheme() {
+  const accent = cssColor('--accent', '#a78bfa')
+  const accent2 = cssColor('--accent2', '#7c5cf0')
+  defineNexusTheme(accent, accent2)
+  monaco.editor.setTheme('nexus-glass')
+}
+function defineNexusTheme(accent: string, accent2: string) {
 monaco.editor.defineTheme('nexus-glass', {
   base: 'vs-dark',
   inherit: true,
   rules: [
     { token: 'comment', foreground: '6b6889', fontStyle: 'italic' },
-    { token: 'keyword', foreground: 'c4a7ff' },
+    { token: 'keyword', foreground: accent.slice(1) },
     { token: 'string', foreground: '9fd8b4' },
     { token: 'number', foreground: 'f0b98a' },
     { token: 'type', foreground: '8fc3ff' },
@@ -37,9 +48,9 @@ monaco.editor.defineTheme('nexus-glass', {
     'editor.lineHighlightBorder': '#00000000',
     'editorLineNumber.foreground': '#4a4862',
     'editorLineNumber.activeForeground': '#b3aacf',
-    'editor.selectionBackground': '#7c5cf042',
-    'editor.inactiveSelectionBackground': '#7c5cf022',
-    'editorCursor.foreground': '#c2b0ff',
+    'editor.selectionBackground': `${accent2}42`,
+    'editor.inactiveSelectionBackground': `${accent2}22`,
+    'editorCursor.foreground': accent,
     'editorIndentGuide.background1': '#ffffff0d',
     'editorIndentGuide.activeBackground1': '#ffffff24',
     'scrollbarSlider.background': '#ffffff14',
@@ -51,5 +62,7 @@ monaco.editor.defineTheme('nexus-glass', {
     'diffEditor.removedTextBackground': '#ff6b8a22',
   },
 })
+}
+defineNexusTheme(cssColor('--accent', '#a78bfa'), cssColor('--accent2', '#7c5cf0'))
 
 export { default as Editor, DiffEditor } from '@monaco-editor/react'

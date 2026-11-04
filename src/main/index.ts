@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, screen, shell } from 'electron'
 import { spawn, execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import path from 'node:path'
@@ -11,7 +11,8 @@ const execFileAsync = promisify(execFile)
 type AgentId = 'codex' | 'claude' | 'gemini' | 'copilot'
 type Message = { id: string; role: 'user' | 'assistant'; content: string; agent: AgentId; createdAt: number; status?: 'running' | 'complete' | 'error' | 'cancelled'; runId?: string }
 type Conversation = { id: string; title: string; projectPath: string; agent: AgentId; updatedAt: number; messages: Message[] }
-type StoreShape = { projects: string[]; conversations: Conversation[]; recentProject?: string }
+type WindowState = { x?: number; y?: number; width: number; height: number; maximized?: boolean }
+type StoreShape = { projects: string[]; conversations: Conversation[]; recentProject?: string; windowState?: WindowState }
 type AgentRunInput = { runId: string; agent: AgentId; prompt: string; cwd: string }
 const allowedAgents: AgentId[] = ['codex', 'claude', 'gemini', 'copilot']
 const ignoredDirectories = new Set(['.git', 'node_modules', '.next', '.turbo', 'dist', 'build', 'coverage', '.venv', 'venv', '.idea', '.vscode'])
@@ -28,7 +29,7 @@ function loadStore() {
   dataFile = path.join(app.getPath('userData'), 'nexus-state.json')
   try {
     const loaded = JSON.parse(fs.readFileSync(dataFile, 'utf8')) as Partial<StoreShape>
-    persisted = { projects: Array.isArray(loaded.projects) ? loaded.projects : [], conversations: Array.isArray(loaded.conversations) ? loaded.conversations : [], recentProject: loaded.recentProject }
+    persisted = { projects: Array.isArray(loaded.projects) ? loaded.projects : [], conversations: Array.isArray(loaded.conversations) ? loaded.conversations : [], recentProject: loaded.recentProject, windowState: loaded.windowState }
   } catch { /* first run */ }
 }
 function persist() {
@@ -60,15 +61,37 @@ function safePath(root: string, relativePath: string) {
   return candidate
 }
 const iconPath = path.join(__dirname, '../../build/icon.png')
+// First launch opens at a comfortable Slack-like size; afterwards the last size/position is restored
+// (only if it is still on a connected display).
+function initialWindowState(): WindowState {
+  const saved = persisted.windowState
+  const primary = screen.getPrimaryDisplay().workArea
+  const fallback = { width: Math.min(1280, primary.width - 80), height: Math.min(820, primary.height - 60) }
+  if (!saved?.width || !saved?.height) return fallback
+  const area = screen.getDisplayMatching({ x: saved.x ?? primary.x, y: saved.y ?? primary.y, width: saved.width, height: saved.height }).workArea
+  const width = Math.min(Math.max(saved.width, 960), area.width)
+  const height = Math.min(Math.max(saved.height, 640), area.height)
+  const onScreen = saved.x !== undefined && saved.y !== undefined
+    && saved.x < area.x + area.width - 120 && saved.x + width > area.x + 120
+    && saved.y >= area.y - 20 && saved.y < area.y + area.height - 120
+  return onScreen ? { x: saved.x, y: saved.y, width, height, maximized: saved.maximized } : { width, height, maximized: saved.maximized }
+}
 function createWindow() {
+  const state = initialWindowState()
   mainWindow = new BrowserWindow({
-    width: 1640, height: 1020, minWidth: 1180, minHeight: 760,
+    width: state.width, height: state.height, minWidth: 960, minHeight: 640,
+    ...(state.x !== undefined && state.y !== undefined ? { x: state.x, y: state.y } : { center: true }),
     title: 'NEXUS AI', show: false, icon: iconPath,
     titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 22, y: 22 },
     ...(process.platform === 'darwin' ? { vibrancy: 'under-window' as const, visualEffectState: 'active' as const, backgroundColor: '#00000000' } : { backgroundColor: '#090b10' }),
     webPreferences: { preload: path.join(__dirname, '../preload/index.js'), contextIsolation: true, nodeIntegration: false, sandbox: true },
   })
-  mainWindow.once('ready-to-show', () => mainWindow?.show())
+  mainWindow.once('ready-to-show', () => { if (state.maximized) mainWindow?.maximize(); mainWindow?.show() })
+  mainWindow.on('close', () => {
+    if (!mainWindow) return
+    persisted.windowState = { ...mainWindow.getNormalBounds(), maximized: mainWindow.isMaximized() }
+    persist()
+  })
   mainWindow.on('closed', () => { mainWindow = null })
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     try { const parsed = new URL(url); if (['https:', 'http:'].includes(parsed.protocol)) void shell.openExternal(parsed.toString()) } catch { /* reject malformed urls */ }
