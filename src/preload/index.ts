@@ -1,0 +1,56 @@
+import { contextBridge, ipcRenderer } from 'electron'
+
+const subscribe = <T,>(channel: string, callback: (data: T) => void) => {
+  const listener = (_event: Electron.IpcRendererEvent, data: T) => callback(data)
+  ipcRenderer.on(channel, listener)
+  return () => ipcRenderer.removeListener(channel, listener)
+}
+
+contextBridge.exposeInMainWorld('nexus', {
+  getState: () => ipcRenderer.invoke('app:get-state'),
+  openProject: () => ipcRenderer.invoke('project:open'),
+  selectProject: (projectPath: string) => ipcRenderer.invoke('project:select', projectPath),
+  pickProjectLocation: () => ipcRenderer.invoke('project:pick-location'),
+  createProject: (input: { parent: string; name: string; initGit?: boolean }) => ipcRenderer.invoke('project:create', input),
+  removeProject: (projectPath: string) => ipcRenderer.invoke('project:remove', projectPath),
+  saveConversation: (conversation: unknown) => ipcRenderer.invoke('conversation:save', conversation),
+  deleteConversation: (id: string) => ipcRenderer.invoke('conversation:delete', id),
+  listFiles: (projectPath: string) => ipcRenderer.invoke('files:tree', projectPath),
+  readFile: (input: { projectPath: string; relativePath: string }) => ipcRenderer.invoke('files:read', input),
+  writeFile: (input: { projectPath: string; relativePath: string; content: string }) => ipcRenderer.invoke('files:write', input),
+  createFile: (input: { projectPath: string; relativePath: string; kind: 'file' | 'directory' }) => ipcRenderer.invoke('files:create', input),
+  deleteFile: (input: { projectPath: string; relativePath: string }) => ipcRenderer.invoke('files:delete', input),
+  gitStatus: (projectPath: string) => ipcRenderer.invoke('git:status', projectPath),
+  gitFileDiff: (input: { projectPath: string; relativePath: string; staged?: boolean }) => ipcRenderer.invoke('git:file-diff', input),
+  gitStage: (input: { projectPath: string; paths: string[] }) => ipcRenderer.invoke('git:stage', input),
+  gitUnstage: (input: { projectPath: string; paths: string[] }) => ipcRenderer.invoke('git:unstage', input),
+  gitCommit: (input: { projectPath: string; message: string }) => ipcRenderer.invoke('git:commit', input),
+  gitBranches: (projectPath: string) => ipcRenderer.invoke('git:branches', projectPath),
+  gitCreateBranch: (input: { projectPath: string; branch: string }) => ipcRenderer.invoke('git:create-branch', input),
+  gitCheckout: (input: { projectPath: string; branch: string }) => ipcRenderer.invoke('git:checkout', input),
+  gitPush: (input: { projectPath: string }) => ipcRenderer.invoke('git:push', input),
+  gitPull: (input: { projectPath: string }) => ipcRenderer.invoke('git:pull', input),
+  gitFetch: (input: { projectPath: string }) => ipcRenderer.invoke('git:fetch', input),
+  gitAddRemote: (input: { projectPath: string; url: string }) => ipcRenderer.invoke('git:add-remote', input),
+  ghStatus: () => ipcRenderer.invoke('gh:status'),
+  ghCreateRepo: (input: { projectPath: string; name: string; isPrivate: boolean }) => ipcRenderer.invoke('gh:create-repo', input),
+  ghCreatePr: (input: { projectPath: string; title: string; body?: string; base?: string; draft?: boolean }) => ipcRenderer.invoke('gh:pr-create', input),
+  ghPrView: (input: { projectPath: string }) => ipcRenderer.invoke('gh:pr-view', input),
+  checkAgents: () => ipcRenderer.invoke('agent:check'),
+  runAgent: (input: unknown) => ipcRenderer.invoke('agent:run', input),
+  stopAgent: (runId: string) => ipcRenderer.invoke('agent:stop', runId),
+  createTerminal: (input: unknown) => ipcRenderer.invoke('terminal:create', input),
+  writeTerminal: (input: unknown) => ipcRenderer.invoke('terminal:write', input),
+  resizeTerminal: (input: unknown) => ipcRenderer.invoke('terminal:resize', input),
+  killTerminal: (terminalId: string) => ipcRenderer.invoke('terminal:kill', terminalId),
+  reveal: (target: string) => ipcRenderer.invoke('shell:reveal', target),
+  openExternal: (url: string) => ipcRenderer.invoke('shell:open-external', url),
+  onChunk: (callback: (data: { runId: string; text: string }) => void) => subscribe('agent:chunk', callback),
+  onDone: (callback: (data: { runId: string; code: number; error?: string }) => void) => subscribe('agent:done', callback),
+  onActivity: (callback: (data: { runId: string; items: { kind: 'thinking' | 'step' | 'note'; text: string; fresh?: boolean }[] }) => void) => subscribe('agent:activity', callback),
+  onFinal: (callback: (data: { runId: string; text: string }) => void) => subscribe('agent:final', callback),
+  onUsage: (callback: (data: { runId: string; agent: string; usage?: unknown; rateLimit?: unknown }) => void) => subscribe('agent:usage', callback),
+  onStderr: (callback: (data: { runId: string; agent: string; text: string }) => void) => subscribe('agent:stderr', callback),
+  onTerminalData: (callback: (data: { terminalId: string; data: string }) => void) => subscribe('terminal:data', callback),
+  onTerminalExit: (callback: (data: { terminalId: string; exitCode: number; signal?: number }) => void) => subscribe('terminal:exit', callback),
+})

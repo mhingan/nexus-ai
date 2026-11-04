@@ -1,0 +1,89 @@
+{
+  "name": "nexus-ai",
+  "version": "0.3.1",
+  "private": true,
+  "description": "A local-first AI coding IDE for Codex, Claude Code, Gemini CLI and GitHub Copilot CLI.",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build && npm run typecheck",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc --noEmit",
+    "package:mac": "npm run build && node scripts/fix-node-pty-permissions.mjs && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac zip && bash scripts/make-dmg.sh",
+    "postinstall": "electron-builder install-app-deps && node scripts/fix-node-pty-permissions.mjs",
+    "dmg": "bash scripts/make-dmg.sh"
+  },
+  "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "lucide-react": "^1.66.0",
+    "monaco-editor": "^0.57.0",
+    "node-pty": "1.2.0-beta.18",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-markdown": "^9.0.1",
+    "remark-gfm": "^4.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.2.1",
+    "electron": "^45.2.1",
+    "electron-builder": "^26.18.1",
+    "electron-vite": "^6.0.0",
+    "typescript": "^6.0.3",
+    "vite": "^8.3.5"
+  },
+  "build": {
+    "appId": "dev.nexusai.desktop",
+    "productName": "NEXUS AI",
+    "asar": true,
+    "npmRebuild": true,
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "NEXUS-AI-${version}-${arch}.${ext}",
+      "icon": "build/icon.png",
+      "hardenedRuntime": false,
+      "minimumSystemVersion": "13.0",
+      "identity": null
+    },
+    "files": [
+      "out/**/*",
+      "build/icon.png",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "asarUnpack": [
+      "**/node_modules/node-pty/**"
+    ],
+    "copyright": "Copyright © 2026 NEXUS AI",
+    "dmg": {
+      "title": "NEXUS AI ${version}",
+      "icon": "build/icon.png"
+    },
+    "afterPack": "scripts/adhoc-sign.cjs",
+    "publish": null
+  },
+  "author": "NEXUS AI",
+  "homepage": "https://nexusai.dev"
+}
