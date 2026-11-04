@@ -1,4 +1,8 @@
 # NEXUS AI
+<img width="1256" height="812" alt="Screenshot 2026-11-04 at 09 23 12" src="https://github.com/user-attachments/assets/5f4f0170-1b88-48ee-b649-7ba4c3f2d3fc" />
+
+<img width="1265" height="808" alt="Screenshot 2026-11-04 at 09 23 23" src="https://github.com/user-attachments/assets/26eb7b53-4fcf-4cfa-99d2-6e7a38e5d084" />
+
 
 NEXUS AI — a local-first macOS AI coding IDE for Codex CLI, Claude Code, Gemini CLI and GitHub Copilot CLI. NEXUS provides a native desktop shell, project explorer, Monaco editor, multi-agent chat, Git workflow and an interactive local terminal.
 
